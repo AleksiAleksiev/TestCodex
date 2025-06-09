@@ -15,20 +15,25 @@ namespace PersonApi.Controllers
             _client = httpClientFactory.CreateClient();
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<WeatherForecastModel>>> Get([FromQuery] string city)
+        [HttpPost]
+        public async Task<ActionResult<IEnumerable<WeatherForecastModel>>> Post([FromBody] WeatherRequestModel request)
         {
-            if (string.IsNullOrWhiteSpace(city))
+            if (string.IsNullOrWhiteSpace(request.City))
             {
                 return BadRequest("City is required.");
             }
 
-            var url = $"https://wttr.in/{Uri.EscapeDataString(city)}?format=j1";
+            if (request.Days <= 0)
+            {
+                return BadRequest("Days must be greater than zero.");
+            }
+
+            var url = $"https://wttr.in/{Uri.EscapeDataString(request.City)}?format=j1&num_of_days={request.Days}";
             using var stream = await _client.GetStreamAsync(url);
             using var doc = await JsonDocument.ParseAsync(stream);
 
             var days = new List<WeatherForecastModel>();
-            var weatherDays = doc.RootElement.GetProperty("weather").EnumerateArray().Take(3);
+            var weatherDays = doc.RootElement.GetProperty("weather").EnumerateArray().Take(request.Days);
 
             foreach (var day in weatherDays)
             {
